@@ -408,6 +408,16 @@ function WayHandlers.penalties(profile,way,result,data)
     alternating_penalty = 0.4
   end
 
+  local oneway_penalty = 1.0
+  -- check not already set by oneway handler
+  if result.backward_mode ~= mode.inaccessible then
+    if data.oneway == "yes" or
+    data.oneway == "1" or
+    data.oneway == "true" then
+      oneway_penalty = 0.1
+    end
+  end
+
   local sideroad_penalty = 1.0
   data.sideroad = way:get_value_by_key("side_road")
   if "yes" == data.sideroad or "rotary" == data.sideroad then
@@ -442,7 +452,11 @@ function WayHandlers.maxspeed(profile,way,result,data)
   end
 
   if backward and backward > 0 then
-    result.backward_speed = backward * profile.speed_reduction
+    if data.oneway == "yes" then
+      result.backward_speed = backward * profile.oneway_reduction
+    else
+        result.backward_speed = backward * profile.speed_reduction
+    end
   end
 end
 
@@ -569,22 +583,15 @@ function WayHandlers.oneway(profile,way,result,data)
   if oneway == "-1" then
     data.is_reverse_oneway = true
     result.forward_mode = mode.inaccessible
-  elseif oneway == "yes" or
-         oneway == "1" or
-         oneway == "true" then
-    data.is_forward_oneway = true
-    result.backward_mode = mode.inaccessible
-  elseif profile.oneway_handling == true then
-    local junction = way:get_value_by_key("junction")
-    if data.highway == "motorway" or
-       junction == "roundabout" or
-       junction == "circular" then
+  elseif data.highway == "motorway" or
+  --data.highway == "motorway_link" or
+  way:get_value_by_key("junction") == "roundabout" or
+  way:get_value_by_key("junction") == "circular" then
       if oneway ~= "no" then
         -- implied oneway
         data.is_forward_oneway = true
         result.backward_mode = mode.inaccessible
       end
-    end
   end
 end
 
